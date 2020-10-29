@@ -3,13 +3,9 @@
 
 int main()
 {
-	AD _2(2);
-	AD _3(3);
-	AD _4(4);
-	AD x("x");
-	AD sin("sin", &x);
-	AD _add("+", &_2, &_3);
-	AD _mul("*", &_add, &sin);
-	cout<<_mul;
+	AD parsed = AD::parse("sin(-x)");
+	cout << parsed;
+	cout<<parsed.evaluate({{"x",1.570796327}});
+	
 	return 0;
 }
