@@ -12,6 +12,7 @@ using namespace std;
 
 class  AD
 {
+public:
 	enum class type {
 		function,
 		operation,
@@ -21,6 +22,9 @@ class  AD
 
 	static map < string, double (*)(double) > functions;
 	static map<string, double (*)(double, double) > operations;
+
+	static map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)> doperations;
+
 	std::variant<std::string, double> value;
 	shared_ptr<AD> left = nullptr;
 	shared_ptr<AD> right = nullptr;
@@ -45,6 +49,17 @@ public:
 	}
 
 	AD(string x, AD* l, AD* r) :
+		value(x), left(l), right(r), typ(type::operation)
+	{
+	}
+
+	AD(string x, std::shared_ptr<AD> r) :
+		value(x), right(r), typ(type::function)
+	{
+
+	}
+
+	AD(string x, std::shared_ptr<AD> l, std::shared_ptr<AD> r) :
 		value(x), left(l), right(r), typ(type::operation)
 	{
 	}
@@ -282,8 +297,158 @@ public:
 		return a / b;
 	}
 
+
+	bool operator ==(double b)
+	{
+		if (typ == type::known)
+		{
+			if (std::get<double>(value) == b)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int valType_num()
+	{
+		if (typ == type::known)
+			return 0;
+		if (typ == type::unknown)
+			return 1;
+		if (typ == type::function)
+			return 2;
+		if (typ == type::operation)
+			return 3;
+	}
+
+	friend std::shared_ptr<AD> operator *(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	{
+		if (a->valType_num() == 0 and b->valType_num() == 0)
+			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) * std::get<double>(b->value)));
+		if (*a == 0 or *b == 0)
+			return std::shared_ptr<AD>(new AD(0));
+		if (*a == 1)
+			return b;
+		if (*b == 1)
+			return a;
+		return std::shared_ptr<AD>(new AD("*", a, b));
+	}
+
+	friend std::shared_ptr<AD> operator +(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	{
+		if (a->valType_num() == 0 and b->valType_num() == 0)
+			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) + std::get<double>(b->value)));
+
+		if (*a == 0)
+			return b;
+		if (*b == 0)
+			return a;
+		return std::shared_ptr<AD>(new AD("+", a, b));
+	}
+
+	friend std::shared_ptr<AD> operator -(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	{
+		if (a->valType_num() == 0 and b->valType_num() == 0)
+			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) - std::get<double>(b->value)));
+		if (*a == 0)
+			return std::shared_ptr<AD>(new AD(-1)) * b;
+		if (*b == 0)
+			return a;
+		return std::shared_ptr<AD>(new AD("-", a, b));
+	}
+
+	friend std::shared_ptr<AD> operator /(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	{
+		if (a->valType_num() == 0 and b->valType_num() == 0)
+			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) / std::get<double>(b->value)));
+		if (*a == 0)
+			return  std::shared_ptr<AD>(new AD(0));
+		return std::shared_ptr<AD>(new AD("/", a, b));
+	}
+
+	friend std::shared_ptr<AD> operator ^(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	{
+		if (a->valType_num() == 0 and b->valType_num() == 0)
+			return std::shared_ptr<AD>(new AD(pow(std::get<double>(a->value), std::get<double>(b->value))));
+		if (*a == 0)
+			return std::shared_ptr<AD>(new AD(0));
+		if (*b == 0)
+			return std::shared_ptr<AD>(new AD(1));
+		if (*a == 1)
+			return std::shared_ptr<AD>(new AD(1));
+		if (*b == 1)
+			return a;
+		return std::shared_ptr<AD>(new AD("^", a, b));
+	}
+
+
+	static std::shared_ptr<AD> dmul(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	{
+		return a * b->derivative(x) + b * a->derivative(x);
+	}
+
+	static std::shared_ptr<AD> dadd(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	{
+		return a->derivative(x) + b->derivative(x);
+	}
+
+	static std::shared_ptr<AD> dsub(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	{
+		return a->derivative(x) - b->derivative(x);
+	}
+
+	static std::shared_ptr<AD> ddiv(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	{
+		return (a->derivative(x) * b - b->derivative(x) * a) / (b ^ std::shared_ptr<AD>(new AD(2)));
+	}
+
+	static std::shared_ptr<AD> dpow(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	{
+		return (a ^ b) * (a->derivative(x) * std::shared_ptr<AD>(new AD("ln", b)) + a * b->derivative(x) / b);
+	}
+
+
+	std::shared_ptr<AD> dtan(std::shared_ptr<AD> a)
+	{
+		return std::shared_ptr<AD>(new AD("^", new AD("cos", a), new AD(-2)));
+	}
+
+
+	std::shared_ptr<AD> derivative(const string& x)
+	{
+		if (typ == type::known)
+		{
+			return std::shared_ptr<AD>(new AD(0));
+		}
+		if (typ == type::unknown)
+		{
+			if (std::get<string>(value) == x)
+				return std::shared_ptr<AD>(new AD(1));
+			else
+				return std::shared_ptr<AD>(new AD(0));
+		}
+		if (typ == type::function)
+		{
+			if (std::get<string>(value) == "tan")
+			{
+				return AD::dtan(right) * right->derivative(x);
+			}
+		}
+		if (typ == type::operation)
+		{
+			std::map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)>::const_iterator it = doperations.find(std::get<string>(value));
+			if (it == AD::doperations.end())
+				throw;
+			return (it->second)(left, right, x);
+		}
+	}
 };
 
-map<string, double (*)(double) > AD::functions = { {"sin",std::sin} ,{"cos",std::cos},{"tan",std::tan},{"log10",std::log10},{"exp",std::exp} };
+map<string, double (*)(double) > AD::functions = { {"sin",std::sin} ,{"cos",std::cos},{"tan",std::tan},{"log10",std::log10},{"exp",std::exp},{"ln",std::log} };
+
+map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)> AD::doperations =
+{ {"+",AD::dadd},{"*",AD::dmul},{"-",AD::dsub},{"/",AD::ddiv},{"^",AD::dpow} };
+
 
 map<string, double (*)(double, double) > AD::operations = { {"^", AD::pwr} , { "+", AD::add } ,{"-",AD::sub},{"*",AD::mul},{"/",AD::div} };

@@ -3,9 +3,8 @@
 
 int main()
 {
-	AD parsed = AD::parse("sin(-x)");
-	cout << parsed;
-	cout<<parsed.evaluate({{"x",1.570796327}});
-	
+	AD parsed = AD::parse("x^x");
+	cout << parsed << "\n";
+	cout << (parsed.derivative("x"))->evaluate({{"x",2}});
 	return 0;
 }
