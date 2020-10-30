@@ -4,14 +4,89 @@
 #include<map>
 #include<list>
 #include<stack>
-//#include<sstream>
 #include<functional>
-#include"Functions.h"
+#include"Exceptions.h"
 
 using namespace std;
 
+namespace extrafncs {
+	static double add(double a, double b) {
+		return a + b;
+	}
+
+	static double pow(double a, double b)
+	{
+		return std::pow(a, b);
+	}
+
+	static double sub(double a, double b)
+	{
+		return a - b;
+	}
+
+	static double mul(double a, double b)
+	{
+		return a * b;
+	}
+
+	static double div(double a, double b)
+	{
+		return a / b;
+	}
+
+	static double sec(double x)
+	{
+		return 1 / std::cos(x);
+	}
+
+	static double cosec(double x)
+	{
+		return 1 / std::sin(x);
+	}
+
+	static double cot(double x)
+	{
+		return 1 / std::tan(x);
+	}
+
+	static int precedence(char c)
+	{
+		if (c == '^')
+			return 4;
+		else if (c == '*' || c == '/')
+			return 3;
+		else if (c == '+' || c == '-')
+			return 2;
+		else if (c == '(')
+			return 1;
+		else if (c == ')')
+			return 0;
+		return -1;
+	}
+
+	static bool isNumber(const string& s)
+	{
+		size_t i = 0;
+		if (s[0] == '-')
+			i++;
+		for (; i < s.size(); i++)
+			if (isdigit(s[i]) == false and s[i] != '.')
+				return false;
+		return true;
+	}
+
+	static int precedence(const string& c);
+}
+
+namespace nums {
+	const double E = 2.71828182845904523536;
+	const double PI = 3.141592653589793238463;
+	const double LN10 = 0.434294481903251827651;
+}
+
 class  AD
 {
+	typedef  std::shared_ptr<AD> ptr;
 public:
 	enum class type {
 		function,
@@ -23,7 +98,8 @@ public:
 	static map < string, double (*)(double) > functions;
 	static map<string, double (*)(double, double) > operations;
 
-	static map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)> doperations;
+	static map<string, ptr(*)(ptr a, ptr b, const string& x)> doperations;
+	static map<string, std::function<ptr(shared_ptr<AD>)>> dfunctions;
 
 	std::variant<std::string, double> value;
 	shared_ptr<AD> left = nullptr;
@@ -53,16 +129,17 @@ public:
 	{
 	}
 
-	AD(string x, std::shared_ptr<AD> r) :
+	AD(string x, ptr r) :
 		value(x), right(r), typ(type::function)
 	{
 
 	}
 
-	AD(string x, std::shared_ptr<AD> l, std::shared_ptr<AD> r) :
+	AD(string x, ptr l, ptr r) :
 		value(x), left(l), right(r), typ(type::operation)
 	{
 	}
+
 
 	friend ostream& operator<<(ostream& out, const  AD& exp)
 	{
@@ -84,7 +161,6 @@ public:
 		return out;
 	}
 
-
 	double evaluate(const map<string, double>& vars = {})
 	{
 
@@ -97,7 +173,7 @@ public:
 			std::map<string, double>::const_iterator it = vars.find(std::get<string>(value));
 			if (it == vars.end())
 			{
-				throw;
+				throw VariableNotFound(std::get<string>(value));
 			}
 			return it->second;
 		}
@@ -106,7 +182,7 @@ public:
 			map<string, double (*)(double)>::const_iterator it = AD::functions.find(std::get<string>(value));
 			if (it == AD::functions.end())
 			{
-				throw;
+				throw FunctionNotFound(std::get<string>(value));
 			}
 			return (it->second)(right->evaluate(vars));
 		}
@@ -114,7 +190,7 @@ public:
 		{
 			map<string, double (*)(double, double)>::const_iterator it = AD::operations.find(std::get<string>(value));
 			if (it == AD::operations.end()) {
-				throw;
+				throw OperatorNotFound(std::get<string>(value));
 			}
 			return (it->second)(left->evaluate(vars), right->evaluate(vars));
 		}
@@ -124,65 +200,64 @@ public:
 	{
 		list<string> lst = infixToPostfix(exp);
 
-		stack<AD*> stack;
+		stack<ptr> stack;
 
 		for (auto e = lst.begin(); e != lst.end(); e++)
 		{
-			int pre = precedence(*e);
+			int pre = extrafncs::precedence(*e);
 			if (pre > 1 and pre < 5)
 			{
-				AD* b = stack.top();
+				ptr b = stack.top();
 				stack.pop();
-				AD* a = stack.top();
+				ptr a = stack.top();
 				stack.pop();
-				stack.push(new AD(*e, a, b));
+				stack.push(ptr(new AD(*e, a, b)));
 			}
 			else if (pre == 5)
 			{
-				AD* x = stack.top();
+				ptr x = stack.top();
 				stack.pop();
-				stack.push(new AD(*e, x));
+				stack.push(ptr(new AD(*e, x)));
 			}
 			else {
-				if (AD::isNumber(*e))
-					stack.push(new AD(std::stod(*e)));
+				if (extrafncs::isNumber(*e))
+					stack.push(ptr(new AD(std::stod(*e))));
 				else
-					stack.push(new AD(*e));
+					stack.push(ptr(new AD(*e)));
 			}
 		}
 		return *stack.top();
 	}
 
-	static int precedence(char c)
+	ptr derivative(const string& x)
 	{
-		if (c == '^')
-			return 4;
-		else if (c == '*' || c == '/')
-			return 3;
-		else if (c == '+' || c == '-')
-			return 2;
-		else if (c == '(')
-			return 1;
-		else if (c == ')')
-			return 0;
-		return -1;
-	}
+		if (typ == type::known)
+		{
+			return getNum(0);
+		}
+		else if (typ == type::unknown)
+		{
+			if (std::get<string>(value) == x)
+				return getNum(1);
+			else
+				return getNum(0);
+		}
+		else if (typ == type::function)
+		{
+			map<string, std::function<ptr(shared_ptr<AD>)>>::const_iterator it = AD::dfunctions.find(std::get<string>(value));
+			if (it == AD::dfunctions.end())
+				throw FunctionDerivativeNotFound(std::get<string>(value));
 
-	static int precedence(const string& c)
-	{
-		if (AD::functions.find(c) != AD::functions.end())
-			return 5;
-		if (c == "^")
-			return 4;
-		if (c == "*" || c == "/")
-			return 3;
-		if (c == "+" || c == "-")
-			return 2;
-		if (c == "(")
-			return 1;
-		if (c == ")")
-			return 0;
-		return -1;
+			return (it->second)(right) * right->derivative(x);
+		}
+		else /*if (typ == type::operation)*/
+		{
+			std::map<string, ptr(*)(ptr a, ptr b, const string& x)>::const_iterator it = doperations.find(std::get<string>(value));
+			if (it == AD::doperations.end())
+				throw OperatorDerivativeNotFound(std::get<string>(value));
+
+			return (it->second)(left, right, x);
+		}
 	}
 
 	static list<string> infixToPostfix(const string& exp)
@@ -207,8 +282,8 @@ public:
 				if (stack.top() == "(")
 					stack.pop();
 			}
-			else if (precedence(*e) >= 2) {
-				while (!stack.empty() && precedence(*e) <= precedence(stack.top()))
+			else if (extrafncs::precedence(*e) >= 2) {
+				while (!stack.empty() && extrafncs::precedence(*e) <= extrafncs::precedence(stack.top()))
 				{
 					a.push_back(stack.top());
 					stack.pop();
@@ -227,17 +302,7 @@ public:
 		return a;
 	}
 
-	static bool isNumber(const string& s)
-	{
-		size_t i = 0;
-		if (s[0] == '-')
-			i++;
-		for (; i < s.size(); i++)
-			if (isdigit(s[i]) == false and s[i] != '.')
-				return false;
-		return true;
-	}
-
+private:
 	static  std::list<string> parse_toList(const string& exp)
 	{
 		string container = "";
@@ -246,7 +311,7 @@ public:
 		{
 			if (*e == ' ')
 				continue;
-			if (AD::precedence(*e) >= 0)
+			if (extrafncs::precedence(*e) >= 0)
 			{
 				if (container.size() == 0 && *e == '-')
 				{
@@ -273,31 +338,6 @@ public:
 		return ans;
 	}
 
-	static double add(double a, double b) {
-		return a + b;
-	}
-
-	static double pwr(double a, double b)
-	{
-		return pow(a, b);
-	}
-
-	static double sub(double a, double b)
-	{
-		return a - b;
-	}
-
-	static double mul(double a, double b)
-	{
-		return a * b;
-	}
-
-	static double div(double a, double b)
-	{
-		return a / b;
-	}
-
-
 	bool operator ==(double b)
 	{
 		if (typ == type::known)
@@ -310,145 +350,298 @@ public:
 		return false;
 	}
 
-	int valType_num()
+	bool isConst()
 	{
-		if (typ == type::known)
-			return 0;
-		if (typ == type::unknown)
-			return 1;
-		if (typ == type::function)
-			return 2;
-		if (typ == type::operation)
-			return 3;
+		return typ == type::known;
 	}
 
-	friend std::shared_ptr<AD> operator *(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	//-------------------------------------------
+
+	friend ptr operator *(ptr a, ptr b)
 	{
-		if (a->valType_num() == 0 and b->valType_num() == 0)
-			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) * std::get<double>(b->value)));
+		if (a->isConst() and b->isConst())
+			return ptr(new AD(std::get<double>(a->value) * std::get<double>(b->value)));
 		if (*a == 0 or *b == 0)
-			return std::shared_ptr<AD>(new AD(0));
+			return getNum(0);
 		if (*a == 1)
 			return b;
 		if (*b == 1)
 			return a;
-		return std::shared_ptr<AD>(new AD("*", a, b));
+		return ptr(new AD("*", a, b));
 	}
 
-	friend std::shared_ptr<AD> operator +(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	friend ptr operator +(ptr a, ptr b)
 	{
-		if (a->valType_num() == 0 and b->valType_num() == 0)
-			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) + std::get<double>(b->value)));
+		if (a->isConst() and b->isConst())
+			return ptr(new AD(std::get<double>(a->value) + std::get<double>(b->value)));
 
 		if (*a == 0)
 			return b;
 		if (*b == 0)
 			return a;
-		return std::shared_ptr<AD>(new AD("+", a, b));
+		return ptr(new AD("+", a, b));
 	}
 
-	friend std::shared_ptr<AD> operator -(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	friend ptr operator -(ptr a, ptr b)
 	{
-		if (a->valType_num() == 0 and b->valType_num() == 0)
-			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) - std::get<double>(b->value)));
+		if (a->isConst() and b->isConst())
+			return ptr(new AD(std::get<double>(a->value) - std::get<double>(b->value)));
 		if (*a == 0)
-			return std::shared_ptr<AD>(new AD(-1)) * b;
+			return getNum(-1) * b;
 		if (*b == 0)
 			return a;
-		return std::shared_ptr<AD>(new AD("-", a, b));
+		return ptr(new AD("-", a, b));
 	}
 
-	friend std::shared_ptr<AD> operator /(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	friend ptr operator /(ptr a, ptr b)
 	{
-		if (a->valType_num() == 0 and b->valType_num() == 0)
-			return std::shared_ptr<AD>(new AD(std::get<double>(a->value) / std::get<double>(b->value)));
+		if (a->isConst() and b->isConst())
+			return ptr(new AD(std::get<double>(a->value) / std::get<double>(b->value)));
 		if (*a == 0)
-			return  std::shared_ptr<AD>(new AD(0));
-		return std::shared_ptr<AD>(new AD("/", a, b));
+			return  getNum(0);
+		return ptr(new AD("/", a, b));
 	}
 
-	friend std::shared_ptr<AD> operator ^(std::shared_ptr<AD> a, std::shared_ptr<AD> b)
+	friend ptr operator ^(ptr a, ptr b)
 	{
-		if (a->valType_num() == 0 and b->valType_num() == 0)
-			return std::shared_ptr<AD>(new AD(pow(std::get<double>(a->value), std::get<double>(b->value))));
+		if (a->isConst() and b->isConst())
+			return ptr(new AD(pow(std::get<double>(a->value), std::get<double>(b->value))));
 		if (*a == 0)
-			return std::shared_ptr<AD>(new AD(0));
+			return getNum(0);
 		if (*b == 0)
-			return std::shared_ptr<AD>(new AD(1));
+			return getNum(1);
 		if (*a == 1)
-			return std::shared_ptr<AD>(new AD(1));
+			return getNum(1);
 		if (*b == 1)
 			return a;
-		return std::shared_ptr<AD>(new AD("^", a, b));
+		return ptr(new AD("^", a, b));
+	}
+
+	//Functions
+	friend ptr cos(ptr a)
+	{
+		return ptr(new AD("cos", a));
+	}
+
+	friend ptr sin(ptr a)
+	{
+		return ptr(new AD("sin", a));
+	}
+
+	friend ptr tan(ptr a)
+	{
+		return ptr(new AD("tan", a));
+	}
+
+	friend ptr sec(ptr a)
+	{
+		return ptr(new AD("sec", a));
+	}
+
+	friend ptr cosec(ptr a)
+	{
+		return ptr(new AD("cosec", a));
+	}
+
+	friend ptr cot(ptr a)
+	{
+		return ptr(new AD("cot", a));
+	}
+
+	friend ptr ln(ptr a)
+	{
+		return ptr(new AD("ln", a));
+	}
+
+	friend ptr log10(ptr a)
+	{
+		return ptr(new AD("log10", a));
+	}
+
+	friend ptr sinh(ptr a)
+	{
+		return ptr(new AD("sinh", a));
+	}
+
+	friend ptr cosh(ptr a)
+	{
+		return ptr(new AD("cosh", a));
+	}
+
+	friend ptr tanh(ptr a)
+	{
+		return ptr(new AD("tanh", a));
 	}
 
 
-	static std::shared_ptr<AD> dmul(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	//d<Functions>
+	static ptr dtan(ptr a)
+	{
+		return cos(a) ^ getNum(-2);
+	}
+
+	static ptr dcos(ptr a)
+	{
+		return getNum(-1) * sin(a);
+	}
+
+	static ptr dsin(ptr a)
+	{
+		return cos(a);
+	}
+
+	static ptr dsec(ptr a)
+	{
+		return cos(a) * tan(a);
+	}
+
+	static ptr dcosec(ptr a)
+	{
+		return getNum(-1) * cosec(a) * cot(a);
+	}
+
+	static ptr dcot(ptr a)
+	{
+		return getNum(-1) * (sin(a) ^ getNum(-2));
+	}
+
+	static ptr dlog10(ptr a)
+	{
+		return getNum(1 / nums::LN10) / a;
+	}
+
+	static ptr dln(ptr a)
+	{
+		return getNum(1) / a;
+	}
+
+	static ptr dcosh(ptr a)
+	{
+		return sinh(a);
+	}
+
+	static ptr dsinh(ptr a)
+	{
+		return cosh(a);
+	}
+
+	static ptr dtanh(ptr a)
+	{
+		return getNum(1) / (cosh(a) ^ getNum(2));
+	}
+
+	static ptr darcsin(ptr a)
+	{
+		return getNum(1) / ((getNum(1) - (a ^ getNum(2))) ^ getNum(0.5));
+	}
+
+	static ptr darccos(ptr a)
+	{
+		return getNum(-1) / ((getNum(1) - (a ^ getNum(2))) ^ getNum(0.5));
+	}
+
+	static ptr darctan(ptr a)
+	{
+		return getNum(1) / (getNum(1) + (a ^ getNum(2)));
+	}
+
+	static ptr getNum(double a)
+	{
+		return ptr(new AD(a));
+	}
+
+
+	//d<operators>
+	static ptr dmul(ptr a, ptr b, const string& x)
 	{
 		return a * b->derivative(x) + b * a->derivative(x);
 	}
 
-	static std::shared_ptr<AD> dadd(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	static ptr dadd(ptr a, ptr b, const string& x)
 	{
 		return a->derivative(x) + b->derivative(x);
 	}
 
-	static std::shared_ptr<AD> dsub(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	static ptr dsub(ptr a, ptr b, const string& x)
 	{
 		return a->derivative(x) - b->derivative(x);
 	}
 
-	static std::shared_ptr<AD> ddiv(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	static ptr ddiv(ptr a, ptr b, const string& x)
 	{
-		return (a->derivative(x) * b - b->derivative(x) * a) / (b ^ std::shared_ptr<AD>(new AD(2)));
+		return (a->derivative(x) * b - b->derivative(x) * a) / (b ^ getNum(2));
 	}
 
-	static std::shared_ptr<AD> dpow(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)
+	static ptr dpow(ptr f, ptr g, const string& x)
 	{
-		return (a ^ b) * (a->derivative(x) * std::shared_ptr<AD>(new AD("ln", b)) + a * b->derivative(x) / b);
-	}
-
-
-	std::shared_ptr<AD> dtan(std::shared_ptr<AD> a)
-	{
-		return std::shared_ptr<AD>(new AD("^", new AD("cos", a), new AD(-2)));
-	}
-
-
-	std::shared_ptr<AD> derivative(const string& x)
-	{
-		if (typ == type::known)
+		if (g->isConst() and not(g == 0))
 		{
-			return std::shared_ptr<AD>(new AD(0));
+			return (f ^ getNum(std::get<double>(g->value) - 1)) * getNum(std::get<double>(g->value)) * f->derivative(x);
 		}
-		if (typ == type::unknown)
-		{
-			if (std::get<string>(value) == x)
-				return std::shared_ptr<AD>(new AD(1));
-			else
-				return std::shared_ptr<AD>(new AD(0));
-		}
-		if (typ == type::function)
-		{
-			if (std::get<string>(value) == "tan")
-			{
-				return AD::dtan(right) * right->derivative(x);
-			}
-		}
-		if (typ == type::operation)
-		{
-			std::map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)>::const_iterator it = doperations.find(std::get<string>(value));
-			if (it == AD::doperations.end())
-				throw;
-			return (it->second)(left, right, x);
-		}
+		return (f ^ g) * (g->derivative(x) * ptr(new AD("ln", f)) + g * f->derivative(x) / f);
 	}
 };
 
-map<string, double (*)(double) > AD::functions = { {"sin",std::sin} ,{"cos",std::cos},{"tan",std::tan},{"log10",std::log10},{"exp",std::exp},{"ln",std::log} };
+map<string, double (*)(double) > AD::functions = {
+{"sin",std::sin} ,
+{"cos",std::cos},
+{"tan",std::tan},
+{"log10",std::log10},
+{"exp",std::exp},
+{"ln",std::log},
+{"sec",extrafncs::sec},
+{"cosec",extrafncs::cosec},
+{"cot",extrafncs::cot},
+{"sinh",std::sinh},
+{"cosh",std::cosh},
+{"tanh",std::tanh},
+{"arcsin",std::asin},
+{"arccos",std::acos},
+{"arctan",std::atan} };
 
-map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)> AD::doperations =
-{ {"+",AD::dadd},{"*",AD::dmul},{"-",AD::dsub},{"/",AD::ddiv},{"^",AD::dpow} };
+map<string, std::shared_ptr<AD>(*)(std::shared_ptr<AD> a, std::shared_ptr<AD> b, const string& x)> AD::doperations = {
+{"+",AD::dadd},
+{"*",AD::dmul},
+{"-",AD::dsub},
+{"/",AD::ddiv},
+{"^",AD::dpow} };
 
+map<string, double (*)(double, double) > AD::operations = {
+{"^", extrafncs::pow} ,
+{ "+", extrafncs::add} ,
+{"-",extrafncs::sub},
+{"*",extrafncs::mul},
+{"/",extrafncs::div} };
 
-map<string, double (*)(double, double) > AD::operations = { {"^", AD::pwr} , { "+", AD::add } ,{"-",AD::sub},{"*",AD::mul},{"/",AD::div} };
+map<string, std::function< std::shared_ptr<AD>(shared_ptr<AD>)>> AD::dfunctions = {
+{"cos",AD::dcos},
+{"sin",AD::dsin},
+{"tan",AD::dtan},
+{"sec",AD::dsec},
+{"cosec",AD::dcosec},
+{"cot",AD::dcot},
+{"ln",AD::dln},
+{"sinh",AD::dsinh},
+{"cosh",AD::dcosh},
+{"tanh",AD::dtanh},
+{"arcsin",AD::darcsin},
+{"arccos",AD::darccos},
+{"arctan",AD::darctan},
+{"log10",AD::dlog10} };
+
+static int extrafncs::precedence(const string& c)
+{
+	if (AD::functions.find(c) != AD::functions.end())
+		return 5;
+	if (c == "^")
+		return 4;
+	if (c == "*" || c == "/")
+		return 3;
+	if (c == "+" || c == "-")
+		return 2;
+	if (c == "(")
+		return 1;
+	if (c == ")")
+		return 0;
+	return -1;
+}

@@ -3,8 +3,8 @@
 
 int main()
 {
-	AD parsed = AD::parse("x^x");
+	AD parsed = AD::parse("sjavkdsbv*(2^2+y1)");
 	cout << parsed << "\n";
-	cout << (parsed.derivative("x"))->evaluate({{"x",2}});
+	cout << (parsed.evaluate({{"y1",2},{"sjavkdsbv",0}}));
 	return 0;
 }
