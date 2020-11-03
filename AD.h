@@ -399,8 +399,10 @@ private:
 	{
 		if (a->isConst() and b->isConst())
 			return ptr(new AD(std::get<double>(a->value) / std::get<double>(b->value)));
-		if (*a == 0)
+		if (*a == 0 and !(*b == 0))
+		{
 			return  getNum(0);
+		}
 		return ptr(new AD("/", a, b));
 	}
 
@@ -408,9 +410,9 @@ private:
 	{
 		if (a->isConst() and b->isConst())
 			return ptr(new AD(pow(std::get<double>(a->value), std::get<double>(b->value))));
-		if (*a == 0)
+		if (*a == 0 and !(*b == 0))
 			return getNum(0);
-		if (*b == 0)
+		if (*b == 0 and !(*a == 0))
 			return getNum(1);
 		if (*a == 1)
 			return getNum(1);
