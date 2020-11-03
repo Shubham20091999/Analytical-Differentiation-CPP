@@ -313,13 +313,15 @@ private:
 				continue;
 			if (extrafncs::precedence(*e) >= 0)
 			{
-				if (container.size() == 0 && *e == '-')
+				if (container.size() == 0 && *e == '-' && (e == exp.begin() || *(e - 1) != ')'))
 				{
 					ans.push_back("-1");
 					ans.push_back("*");
 				}
-				else if (container.size() == 0 && *e == '+')
+				else if (container.size() == 0 && *e == '+' && (e == exp.begin() || *(e - 1) != ')'))
+				{
 					continue;
+				}
 				else
 				{
 					if (container.size() != 0)

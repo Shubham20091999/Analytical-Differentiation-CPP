@@ -3,8 +3,14 @@
 
 int main()
 {
-	AD parsed = AD::parse("sjavkdsbv*(2^2+y1)");
-	cout << parsed << "\n";
-	cout << (parsed.evaluate({{"y1",2},{"sjavkdsbv",0}}));
+	string s = "cos(sin(tan(y1))++++++-+++++20)";
+	AD parsed = AD::parse(s);
+	for (auto a : AD::infixToPostfix(s))
+	{
+		cout << a << " ";
+	}
+	cout << '\n';
+	cout << parsed;
+	cout << (parsed.evaluate({ {"y1",2} }));
 	return 0;
 }
