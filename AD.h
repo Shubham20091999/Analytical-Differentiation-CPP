@@ -6,6 +6,7 @@
 #include<stack>
 #include<functional>
 #include"Exceptions.h"
+#include"Matrix.h"
 
 using namespace std;
 
@@ -106,7 +107,11 @@ public:
 	shared_ptr<AD> right = nullptr;
 	type typ;
 
-public:
+	AD() {
+
+	}
+
+private:
 	AD(double x)
 	{
 		value = x;
@@ -140,7 +145,7 @@ public:
 	{
 	}
 
-
+public:
 	friend ostream& operator<<(ostream& out, const  AD& exp)
 	{
 		if (exp.typ == type::known)
@@ -583,6 +588,35 @@ private:
 			return (f ^ getNum(std::get<double>(g->value) - 1)) * getNum(std::get<double>(g->value)) * f->derivative(x);
 		}
 		return (f ^ g) * (g->derivative(x) * ptr(new AD("ln", f)) + g * f->derivative(x) / f);
+	}
+
+
+	//Solver
+public:
+	static Matrix<AD> Jacobian(const std::vector<std::string>& fn, const std::vector<std::string>& var) {
+		Matrix<AD> ret(fn.size(), var.size());
+
+		for (size_t i = 0; i < fn.size(); i++) {
+			AD parsed = AD::parse(fn[i]);
+			for (size_t j = 0; j < var.size(); j++) {
+				ret.Populate(i, j, *parsed.derivative(var[j]));
+			}
+		}
+
+		return ret;
+	}
+
+
+	static Matrix<double> EvaluateJacobian(Matrix<AD>& jacobian, const std::map<std::string, double>& vals) {
+		unsigned int m = jacobian.nCols();
+		unsigned int n = jacobian.nRows();
+		Matrix<double> ret(m, n);
+		for (unsigned int i = 0; i < m; i++) {
+			for (unsigned int j = 0; j < n; j++) {
+				ret.Populate(i, j, jacobian.Glimpse(i, j).evaluate(vals));
+			}
+		}
+		return ret;
 	}
 };
 
