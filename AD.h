@@ -87,8 +87,9 @@ namespace nums {
 
 class  AD
 {
-	typedef  std::shared_ptr<AD> ptr;
 public:
+	typedef  std::shared_ptr<AD> ptr;
+
 	enum class type {
 		function,
 		operation,
@@ -108,10 +109,11 @@ public:
 	type typ;
 
 	AD() {
-
+		value = 0.0;
+		typ = AD::type::known;
 	}
 
-private:
+
 	AD(double x)
 	{
 		value = x;
@@ -345,18 +347,6 @@ private:
 		return ans;
 	}
 
-	bool operator ==(double b)
-	{
-		if (typ == type::known)
-		{
-			if (std::get<double>(value) == b)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
 	bool isConst()
 	{
 		return typ == type::known;
@@ -554,12 +544,13 @@ private:
 		return getNum(1) / (getNum(1) + (a ^ getNum(2)));
 	}
 
+public:
 	static ptr getNum(double a)
 	{
-		return ptr(new AD(a));
+		return std::make_shared<AD>(AD(a));
 	}
 
-
+private:
 	//d<operators>
 	static ptr dmul(ptr a, ptr b, const string& x)
 	{
@@ -617,6 +608,18 @@ public:
 			}
 		}
 		return ret;
+	}
+
+	bool operator ==(double b)
+	{
+		if (typ == type::known)
+		{
+			if (std::get<double>(value) == b)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 };
 
