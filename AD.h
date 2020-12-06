@@ -544,12 +544,6 @@ private:
 		return getNum(1) / (getNum(1) + (a ^ getNum(2)));
 	}
 
-public:
-	static ptr getNum(double a)
-	{
-		return std::make_shared<AD>(AD(a));
-	}
-
 private:
 	//d<operators>
 	static ptr dmul(ptr a, ptr b, const string& x)
@@ -582,33 +576,11 @@ private:
 	}
 
 
-	//Solver
 public:
-	/*static Matrix<AD> Jacobian(const std::vector<std::string>& fn, const std::vector<std::string>& var) {
-		Matrix<AD> ret(fn.size(), var.size());
-
-		for (size_t i = 0; i < fn.size(); i++) {
-			AD parsed = AD::parse(fn[i]);
-			for (size_t j = 0; j < var.size(); j++) {
-				ret.Populate(i, j, *parsed.derivative(var[j]));
-			}
-		}
-
-		return ret;
+	static ptr getNum(double a)
+	{
+		return std::make_shared<AD>(AD(a));
 	}
-
-
-	static Matrix<double> EvaluateJacobian(Matrix<AD>& jacobian, const std::map<std::string, double>& vals) {
-		unsigned int m = jacobian.nCols();
-		unsigned int n = jacobian.nRows();
-		Matrix<double> ret(m, n);
-		for (unsigned int i = 0; i < m; i++) {
-			for (unsigned int j = 0; j < n; j++) {
-				ret.Populate(i, j, jacobian.Glimpse(i, j).evaluate(vals));
-			}
-		}
-		return ret;
-	}*/
 
 	bool operator ==(double b)
 	{
@@ -623,11 +595,10 @@ public:
 	}
 
 	void replaceUnknown(string p, string n) {
-		replacer(p, n, *this);
+		replaceUnknown(p, n, *this);
 	}
 
-
-	static void replacer(string p, string n, AD& exp) {
+	static void replaceUnknown(string p, string n, AD& exp) {
 		if (exp.typ == type::unknown)
 		{
 			if (std::get<string>(exp.value) == p) {
@@ -635,11 +606,11 @@ public:
 			}
 		}
 		else if (exp.typ == type::function)
-			replacer(p, n, *exp.right);
+			replaceUnknown(p, n, *exp.right);
 		else if (exp.typ == type::operation)
 		{
-			replacer(p, n, *exp.right);
-			replacer(p, n, *exp.left);
+			replaceUnknown(p, n, *exp.right);
+			replaceUnknown(p, n, *exp.left);
 		}
 	}
 
@@ -679,6 +650,7 @@ public:
 	void putVal(const map<string, double>& vals) {
 		AD::putVal(vals, *this);
 	}
+
 };
 
 map<string, double (*)(double) > AD::functions = {

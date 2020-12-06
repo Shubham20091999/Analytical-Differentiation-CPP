@@ -4,10 +4,10 @@
 
 class Solver {
 public:
-	AD::ptr cUxx, cUyy, cUx, cUy, cc, Fa, Fb, Fc, Fd;
-	double a = 0, c = 0, b = 1, d = 1;
-	unsigned int resx = 8;
-	unsigned int resy = 8;
+	AD::ptr cUxx, cUyy, cUx, cUy, cc, fXL, fXU, fYL, fYU;
+	double bXL = 0, bYL = 0, bXU = 1, bYU = 1;
+	unsigned int resx = 4;
+	unsigned int resy = 4;
 
 private:
 	double dx;
@@ -18,32 +18,50 @@ private:
 	}
 
 public:
-	Solver(double a = 0, double b = 1, double c = 0, double d = 1) :
-		a(a), b(b), c(c), d(d) {
+	Solver(double a = 0, double bXU = 1, double bYL = 0, double bYU = 1) :
+		bXL(a), bXU(bXU), bYL(bYL), bYU(bYU) {
 		cUxx = make_shared<AD>(AD::parse("0"));
 		cUyy = cUxx;
 		cUx = cUxx;
 		cUy = cUxx;
 		cc = cUxx;
-		Fa = cUxx;
-		Fb = cUxx;
-		Fc = cUxx;
-		Fd = cUxx;
+		fXL = cUxx;
+		fXU = cUxx;
+		fYL = cUxx;
+		fYU = cUxx;
 
-		dx = (b - a) / (double)(resx - 1);
-		dy = (d - c) / (double)(resy - 1);
+		dx = (bXU - a) / (double)(resx - 1);
+		dy = (bYU - bYL) / (double)(resy - 1);
+	}
+
+	void setcUxx(AD&& a) {
+		cUxx = make_shared<AD>(a);
+	}
+
+	void setcUyy(AD&& a) {
+		cUyy = make_shared<AD>(a);
+	}
+	void setcUx(AD&& a) {
+		cUx = make_shared<AD>(a);
+	}
+	void setcUyx(AD&& a) {
+		cUy = make_shared<AD>(a);
+	}
+
+	void setcc(AD&& a) {
+		cc = make_shared<AD>(a);
 	}
 
 private:
 	AD::ptr getVal(unsigned int i, unsigned int j) {
 		if (i == 0)
-			return make_shared<AD>(AD(Fa->evaluate({ {"x",a + i * dx},{"y",c + j * dy} })));
+			return make_shared<AD>(AD(fXL->evaluate({ {"x",bXL + i * dx},{"y",bYL + j * dy} })));
 		if (i == resx - 1)
-			return make_shared<AD>(AD(Fb->evaluate({ {"x",a + i * dx},{"y",c + j * dy} })));
+			return make_shared<AD>(AD(fXU->evaluate({ {"x",bXL + i * dx},{"y",bYL + j * dy} })));
 		if (j == 0)
-			return make_shared<AD>(AD(Fc->evaluate({ {"x",a + i * dx},{"y",c + j * dy} })));
+			return make_shared<AD>(AD(fYL->evaluate({ {"x",bXL + i * dx},{"y",bYL + j * dy} })));
 		if (j == resy - 1)
-			return make_shared<AD>(AD(Fd->evaluate({ {"x",a + i * dx},{"y",c + j * dy} })));
+			return make_shared<AD>(AD(fYU->evaluate({ {"x",bXL + i * dx},{"y",bYL + j * dy} })));
 		return make_shared<AD>(AD("u" + to_string(getPos(i - 1, j - 1))));
 	}
 
@@ -74,9 +92,8 @@ private:
 			for (unsigned int j = 1; j < resy - 1; j++) {
 				unsigned int pos = getPos(i - 1, j - 1);
 				ret(pos, 0) = *(((cUxx * getUxx(i, j) + cUyy * getUyy(i, j) + cUx * getUx(i, j) + cUy * getUy(i, j) + cc))->copy());
-				ret(pos, 0).putVal({ {"x",a + i * dx},{"y",c + j * dy} });
+				ret(pos, 0).putVal({ {"x",bXL + i * dx},{"y",bYL + j * dy} });
 				ret(pos, 0).replaceUnknown("u", "u" + to_string(pos));
-				cout << ret(pos) << "\n";
 			}
 		}
 
@@ -97,7 +114,7 @@ private:
 public:
 	static Matrix<double> GaussElimination(Matrix<double>& M, Matrix<double>& u)
 	{
-		unsigned int N = u.nRows();
+		int N = u.nRows();
 		Matrix<double> x(N, 1);
 		double temp;
 		int i, j, k;
@@ -156,7 +173,7 @@ public:
 		map<string, double> U;
 		Matrix<double> tmpF(N, 1);
 		Matrix<double> tmpJ(N, N);
-		for (int i = 0; i < N; i++) {
+		for (unsigned int i = 0; i < N; i++) {
 			U.insert({ "u" + to_string(i),(double)rand() / RAND_MAX * 5 });
 		}
 
@@ -166,18 +183,15 @@ public:
 				for (unsigned int j = 0; j < N; j++) {
 					tmpJ(i, j) = J(i, j).evaluate(U);
 				}
-				cout << endl;
 			}
 
 			Matrix<double> tmpu = GaussElimination(tmpJ, tmpF);
 
-			for (int i = 0; i < N; i++) {
+			for (unsigned int i = 0; i < N; i++) {
 				std::map<string, double>::iterator it = U.find("u" + to_string(i));
 				if (it != U.end())
 					it->second += tmpu(i);
-				cout << it->second << " ";
 			}
-			cout << "\n";
 		}
 
 		Matrix<double> ret(N, 1);
