@@ -584,7 +584,7 @@ private:
 
 	//Solver
 public:
-	static Matrix<AD> Jacobian(const std::vector<std::string>& fn, const std::vector<std::string>& var) {
+	/*static Matrix<AD> Jacobian(const std::vector<std::string>& fn, const std::vector<std::string>& var) {
 		Matrix<AD> ret(fn.size(), var.size());
 
 		for (size_t i = 0; i < fn.size(); i++) {
@@ -608,7 +608,7 @@ public:
 			}
 		}
 		return ret;
-	}
+	}*/
 
 	bool operator ==(double b)
 	{
@@ -620,6 +620,64 @@ public:
 			}
 		}
 		return false;
+	}
+
+	void replaceUnknown(string p, string n) {
+		replacer(p, n, *this);
+	}
+
+
+	static void replacer(string p, string n, AD& exp) {
+		if (exp.typ == type::unknown)
+		{
+			if (std::get<string>(exp.value) == p) {
+				exp.value = n;
+			}
+		}
+		else if (exp.typ == type::function)
+			replacer(p, n, *exp.right);
+		else if (exp.typ == type::operation)
+		{
+			replacer(p, n, *exp.right);
+			replacer(p, n, *exp.left);
+		}
+	}
+
+	AD::ptr copy() {
+		if (typ == type::known) {
+			return std::make_shared<AD>(AD(std::get<double>(value)));
+		}
+		else if (typ == type::unknown) {
+			return std::make_shared<AD>(AD(std::get<string>(value)));
+		}
+		else if (typ == type::function) {
+			return std::make_shared<AD>(AD(std::get<string>(value), right->copy()));
+		}
+		else { //if(typ == type::operation) {
+			return std::make_shared<AD>(AD(std::get<string>(value), left->copy(), right->copy()));
+		}
+	}
+
+	static void putVal(const map<string, double>& vals, AD& exp) {
+		if (exp.typ == type::unknown)
+		{
+			std::map<string, double>::const_iterator it = vals.find(std::get<string>(exp.value));
+			if (it != vals.end()) {
+				exp.value = it->second;
+				exp.typ = type::known;
+			}
+		}
+		else if (exp.typ == type::function)
+			putVal(vals, *exp.right);
+		else if (exp.typ == type::operation)
+		{
+			putVal(vals, *exp.right);
+			putVal(vals, *exp.left);
+		}
+	}
+
+	void putVal(const map<string, double>& vals) {
+		AD::putVal(vals, *this);
 	}
 };
 

@@ -20,18 +20,34 @@ public:
 	}
 
 	void Populate(unsigned int i, unsigned int j, T val) {
-		mat[i * m + j] = val;
+		mat[i * n + j] = val;
 	}
 
+
 	T& Glimpse(unsigned int i, unsigned int j) {
-		return mat[i * m + j];
+		return mat[i * n + j];
 	}
+
+	T& operator()(unsigned int i, unsigned int j = 0) {
+		return mat[i * n + j];
+	}
+
 	unsigned int nCols() const {
-		return m;
+		return n;
 	}
 
 	unsigned int nRows() const {
-		return n;
+		return m;
+	}
+
+	static Matrix<T> rand(unsigned int m, unsigned int n) {
+		Matrix<double> ret(m, n);
+		for (unsigned int i = 0; i < m; i++) {
+			for (unsigned int j = 0; j < n; j++) {
+				ret(i, j) = T(rand()) / RAND_MAX * 5;
+			}
+		}
+		return ret;
 	}
 };
 
@@ -89,6 +105,14 @@ public:
 
 	template <class U>
 	friend U norm(vector<U>);
+
+	unsigned int nCols() {
+		return n;
+	}
+
+	unsigned int nRows() {
+		return m;
+	}
 };
 
 //initializing using constructor
@@ -116,7 +140,7 @@ SparseMatrix<T>& SparseMatrix<T>::operator () (int i, int j, T k) {
 			this->value.push_back(k);
 		}
 		else {
-			for (int p = 0; p < this->row.size(); p++) {
+			for (unsigned int p = 0; p < this->row.size(); p++) {
 				if ((this->row[p] == i) && (this->col[p] == j)) {
 					this->value[p] = k;
 					break;
@@ -140,7 +164,7 @@ T SparseMatrix<T>::get(int i, int j) {
 		exit(0);
 	}
 	T k = 0;
-	for (int p = 0; p < this->row.size(); p++) {
+	for (unsigned int p = 0; p < this->row.size(); p++) {
 		if ((this->row[p] == i) && (this->col[p] == j)) {
 			k = this->value[p];
 			break;
