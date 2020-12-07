@@ -8,8 +8,8 @@ class Solver {
 public:
 	AD::ptr cUxx, cUyy, cUx, cUy, cc, fXL, fXU, fYL, fYU;
 	double bXL = 0, bYL = 0, bXU = 1, bYU = 1;
-	unsigned int resx = 3;
-	unsigned int resy = 3;
+	unsigned int resx = 4;
+	unsigned int resy = 4;
 
 private:
 	double dx;
@@ -522,7 +522,6 @@ public:
 				tmpF(i) = -F(i).evaluate(U);
 			}
 
-			//REPORT
 			tmpB = tmpB + (tmpF * tmpu.Transpose()) / mag;
 		}
 
