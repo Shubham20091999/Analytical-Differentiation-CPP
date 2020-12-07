@@ -166,7 +166,7 @@ public:
 		return x;
 	}
 
-	Vec<double> LU_Decomposition(Matrix<double>& M, Vec<double>& u)
+	static Vec<double> LU_Decomposition(Matrix<double>& M, Vec<double>& u)
 	{
 		int N = u.nRows();
 		Vec<double> x(N), z(N);
@@ -215,7 +215,7 @@ public:
 		return x;
 	}
 
-	Vec<double> TriDiagonal(Matrix<double>& M, Vec<double>& u)
+	static Vec<double> TriDiagonal(Matrix<double>& M, Vec<double>& u)
 	{
 		int N = u.size();
 		Vec<double> x(N);
@@ -275,7 +275,7 @@ public:
 		return x;
 	}
 
-	Vec<double> Gauss_Jacobi(Matrix<double>& M, Vec<double>& u)
+	static Vec<double> Gauss_Jacobi(Matrix<double>& M, Vec<double>& u)
 	{
 		int N = u.size();
 		Vec<double> x(N), xn(N);
@@ -334,7 +334,7 @@ public:
 		return xn;
 	}
 
-	Vec<double> Gauss_Seidal(Matrix<double>& M, Vec<double>& u)
+	static Vec<double> Gauss_Seidal(Matrix<double>& M, Vec<double>& u)
 	{
 		int N = u.size();
 		int test, i, j;
@@ -405,7 +405,7 @@ public:
 		return xn;
 	}
 
-	Vec<double> SOR(Matrix<double>& M, Vec<double>& u) {
+	static Vec<double> SOR(Matrix<double>& M, Vec<double>& u) {
 		Vec<double> x(u.size()), xn(u.size());
 		unsigned int i, j, flag;
 		double sum, eps = 0.001, w = 1;
