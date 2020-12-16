@@ -147,6 +147,10 @@ public:
 	{
 	}
 
+	~AD() {
+		cout << "deleted " << *this << "\n";
+	}
+
 public:
 	friend ostream& operator<<(ostream& out, const  AD& exp)
 	{
@@ -203,7 +207,7 @@ public:
 		}
 	}
 
-	static AD parse(const string& exp)
+	static AD::ptr parse(const string& exp)
 	{
 		list<string> lst = infixToPostfix(exp);
 
@@ -233,7 +237,7 @@ public:
 					stack.push(ptr(new AD(*e)));
 			}
 		}
-		return *stack.top();
+		return stack.top();
 	}
 
 	ptr derivative(const string& x)
@@ -312,35 +316,45 @@ public:
 private:
 	static  std::list<string> parse_toList(const string& exp)
 	{
+		//temporary container for various variables, numbers or functions
 		string container = "";
+
+		//what we have to return
 		std::list<string> ans;
 		for (auto e = exp.begin(); e != exp.end(); e++)
 		{
 			if (*e == ' ')
 				continue;
+			//precedence>=0 means its a bracket or an operation like *,/,etc
 			if (extrafncs::precedence(*e) >= 0)
 			{
+				//if container is empty and *e is '-' we will know that, that '-' is used as unary operator
 				if (container.size() == 0 && *e == '-' && (e == exp.begin() || *(e - 1) != ')'))
 				{
+					//we multiply by -1
 					ans.push_back("-1");
 					ans.push_back("*");
 				}
+				//if above condition and if its a '+' then just ignore
 				else if (container.size() == 0 && *e == '+' && (e == exp.begin() || *(e - 1) != ')'))
 				{
 					continue;
 				}
 				else
 				{
+					//add to the end of the list
 					if (container.size() != 0)
 						ans.push_back(container);
 					ans.push_back(string(1, *e));
 				}
+				//clear container for next iterations
 				container.clear();
 			}
 			else {
 				container.push_back(*e);
 			}
 		}
+		//if container is not empty then push the remaining at the end of the ans
 		if (container.size() != 0)
 			ans.push_back(container);
 
