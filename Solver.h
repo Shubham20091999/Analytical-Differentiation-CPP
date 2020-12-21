@@ -8,10 +8,10 @@ class Solver {
 public:
 	AD::ptr cUxx, cUyy, cUx, cUy, cc, fXL, fXU, fYL, fYU;
 	double bXL = 0, bYL = 0, bXU = 1, bYU = 1;
-	unsigned int resx = 4;
-	unsigned int resy = 4;
 
 private:
+	unsigned int resx = 4;
+	unsigned int resy = 4;
 	double dx;
 	double dy;
 
@@ -114,7 +114,7 @@ private:
 	}
 
 public:
-	Vec<double> SolveNewton(function<Vec<double>(Matrix<double>&, Vec<double>&)>& linearSolver) {
+	Vec<double> SolveNewton(const function<Vec<double>(Matrix<double>&, Vec<double>&)>& linearSolver) {
 		auto F = getF();
 		auto J = getJ(F);
 
@@ -156,7 +156,7 @@ public:
 		return ret;
 	}
 
-	Vec<double> SolveBroyden(function<Vec<double>(Matrix<double>&, Vec<double>&)>& linearSolver) {
+	Vec<double> SolveBroyden(const function<Vec<double>(Matrix<double>&, Vec<double>&)>& linearSolver) {
 		auto F = getF();
 		auto B = getJ(F);
 

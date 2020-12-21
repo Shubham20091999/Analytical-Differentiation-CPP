@@ -363,10 +363,6 @@ namespace linearSolvers {
 			x[i] = 0;
 		}
 
-		for (i = 0; i < N; i++)
-			x[i] = 0;
-
-
 		test = 0;
 		for (i = 0; i < N; i++)
 		{

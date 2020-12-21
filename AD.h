@@ -147,9 +147,9 @@ public:
 	{
 	}
 
-	~AD() {
-		cout << "deleted " << *this << "\n";
-	}
+	//~AD() {
+	//	cout << "deleted " << *this << "\n";
+	//}
 
 public:
 	friend ostream& operator<<(ostream& out, const  AD& exp)
