@@ -1,5 +1,4 @@
 #pragma once
-#include <variant>
 #include <string>
 #include<map>
 #include<list>
@@ -9,6 +8,93 @@
 #include"Matrix.h"
 
 using namespace std;
+
+class STRDOUBLE {
+	std::string str = "";
+	double num = 0;
+	bool isItStr = false;
+
+public:
+	STRDOUBLE() {
+
+	}
+	STRDOUBLE(const std::string& str) :str(str) {
+		isItStr = true;
+	}
+
+	STRDOUBLE(const double& num) :num(num) {
+		isItStr = false;
+	}
+
+	STRDOUBLE(const STRDOUBLE& a) {
+		str = a.str;
+		num = a.num;
+		isItStr = a.isItStr;
+	}
+
+	bool isStr() const {
+		return isItStr;
+	}
+
+	bool isNum() const {
+		return !isItStr;
+	}
+
+	double Num() const {
+		return num;
+	}
+
+	std::string Str() const {
+		return str;
+	}
+
+	STRDOUBLE operator=(const std::string& other) {
+		str = other;
+		isItStr = true;
+		num = 0;
+		return *this;
+	}
+
+	STRDOUBLE operator=(const double& other) {
+		num = other;
+		isItStr = false;
+		str = "";
+		return *this;
+	}
+
+	STRDOUBLE operator=(const STRDOUBLE& v) {
+		str = v.str;
+		num = v.num;
+		isItStr = v.isItStr;
+		return *this;
+	}
+
+	bool operator==(const STRDOUBLE& o) const {
+		if (o.isStr() and isStr()) {
+			return o.str == str;
+		}
+		if (o.isNum() and isNum()) {
+			return o.num == num;
+		}
+		return false;
+	}
+
+	bool operator<(const STRDOUBLE& o) {
+		if (o.isStr() and isStr()) {
+			return o.str < str;
+		}
+		if (o.isNum() and isNum()) {
+			return o.num < num;
+		}
+		return true;
+	}
+
+	friend ostream& operator<<(ostream& o, const STRDOUBLE& a) {
+		if (a.isItStr) o << a.str;
+		else o << a.num;
+		return o;
+	}
+};
 
 namespace extrafncs {
 	static double add(double a, double b) {
@@ -103,7 +189,7 @@ public:
 	static map<string, ptr(*)(ptr a, ptr b, const string& x)> doperations;
 	static map<string, std::function<ptr(shared_ptr<AD>)>> dfunctions;
 
-	std::variant<std::string, double> value;
+	STRDOUBLE value;
 	shared_ptr<AD> left = nullptr;
 	shared_ptr<AD> right = nullptr;
 	type typ;
@@ -126,16 +212,6 @@ public:
 		typ = type::unknown;
 	}
 
-	AD(string x, AD* r) :
-		value(x), right(r), typ(type::function)
-	{
-	}
-
-	AD(string x, AD* l, AD* r) :
-		value(x), left(l), right(r), typ(type::operation)
-	{
-	}
-
 	AD(string x, ptr r) :
 		value(x), right(r), typ(type::function)
 	{
@@ -147,28 +223,17 @@ public:
 	{
 	}
 
-	//~AD() {
-	//	cout << "deleted " << *this << "\n";
-	//}
-
 public:
 	friend ostream& operator<<(ostream& out, const  AD& exp)
 	{
 		if (exp.typ == type::known)
-			out << std::get<double>(exp.value);
+			out << exp.value;
 		else if (exp.typ == type::unknown)
-			out << std::get<string>(exp.value);
+			out << exp.value;
 		else if (exp.typ == type::function)
-			out << std::get<string>(exp.value) << '(' << *(exp.right) << ')';
+			out << (exp.value) << '(' << *(exp.right) << ')';
 		else if (exp.typ == type::operation)
-		{
-			//std::stringstream l;
-			//l << *exp.left;
-			//std::ostringstream r;
-			//r << *exp.right;
-			//out << '(' << l.str() << std::get<string>(exp.value) << r.str() << ')';
-			out << '(' << *exp.left << std::get<string>(exp.value) << *exp.right << ')';
-		}
+			out << '(' << *exp.left << exp.value << *exp.right << ')';
 		return out;
 	}
 
@@ -177,31 +242,31 @@ public:
 
 		if (typ == type::known)
 		{
-			return std::get<double>(value);
+			return value.Num();
 		}
 		else if (typ == type::unknown)
 		{
-			std::map<string, double>::const_iterator it = vars.find(std::get<string>(value));
+			std::map<string, double>::const_iterator it = vars.find(value.Str());
 			if (it == vars.end())
 			{
-				throw VariableNotFound(std::get<string>(value));
+				throw VariableNotFound(value.Str());
 			}
 			return it->second;
 		}
 		else if (typ == type::function)
 		{
-			map<string, double (*)(double)>::const_iterator it = AD::functions.find(std::get<string>(value));
+			map<string, double (*)(double)>::const_iterator it = AD::functions.find(value.Str());
 			if (it == AD::functions.end())
 			{
-				throw FunctionNotFound(std::get<string>(value));
+				throw FunctionNotFound(value.Str());
 			}
 			return (it->second)(right->evaluate(vars));
 		}
 		else/* (typ == type::operation)*/
 		{
-			map<string, double (*)(double, double)>::const_iterator it = AD::operations.find(std::get<string>(value));
+			map<string, double (*)(double, double)>::const_iterator it = AD::operations.find(value.Str());
 			if (it == AD::operations.end()) {
-				throw OperatorNotFound(std::get<string>(value));
+				throw OperatorNotFound(value.Str());
 			}
 			return (it->second)(left->evaluate(vars), right->evaluate(vars));
 		}
@@ -240,7 +305,7 @@ public:
 		return stack.top();
 	}
 
-	ptr derivative(const string& x)
+	ptr derivative(const string& x) const
 	{
 		if (typ == type::known)
 		{
@@ -248,24 +313,24 @@ public:
 		}
 		else if (typ == type::unknown)
 		{
-			if (std::get<string>(value) == x)
+			if (value.Str() == x)
 				return getNum(1);
 			else
 				return getNum(0);
 		}
 		else if (typ == type::function)
 		{
-			map<string, std::function<ptr(shared_ptr<AD>)>>::const_iterator it = AD::dfunctions.find(std::get<string>(value));
+			map<string, std::function<ptr(shared_ptr<AD>)>>::const_iterator it = AD::dfunctions.find(value.Str());
 			if (it == AD::dfunctions.end())
-				throw FunctionDerivativeNotFound(std::get<string>(value));
+				throw FunctionDerivativeNotFound(value.Str());
 
 			return (it->second)(right) * right->derivative(x);
 		}
 		else /*if (typ == type::operation)*/
 		{
-			std::map<string, ptr(*)(ptr a, ptr b, const string& x)>::const_iterator it = doperations.find(std::get<string>(value));
+			std::map<string, ptr(*)(ptr a, ptr b, const string& x)>::const_iterator it = doperations.find(value.Str());
 			if (it == AD::doperations.end())
-				throw OperatorDerivativeNotFound(std::get<string>(value));
+				throw OperatorDerivativeNotFound(value.Str());
 
 			return (it->second)(left, right, x);
 		}
@@ -311,6 +376,10 @@ public:
 			stack.pop();
 		}
 		return a;
+	}
+
+	static AD::ptr getptr(AD&& a) {
+		return make_shared<AD>(a);
 	}
 
 private:
@@ -371,7 +440,7 @@ private:
 	friend ptr operator *(ptr a, ptr b)
 	{
 		if (a->isConst() and b->isConst())
-			return ptr(new AD(std::get<double>(a->value) * std::get<double>(b->value)));
+			return ptr(new AD((a->value).Num() * (b->value).Num()));
 		if (*a == 0 or *b == 0)
 			return getNum(0);
 		if (*a == 1)
@@ -384,7 +453,7 @@ private:
 	friend ptr operator +(ptr a, ptr b)
 	{
 		if (a->isConst() and b->isConst())
-			return ptr(new AD(std::get<double>(a->value) + std::get<double>(b->value)));
+			return ptr(new AD((a->value).Num() + (b->value).Num()));
 
 		if (*a == 0)
 			return b;
@@ -396,7 +465,7 @@ private:
 	friend ptr operator -(ptr a, ptr b)
 	{
 		if (a->isConst() and b->isConst())
-			return ptr(new AD(std::get<double>(a->value) - std::get<double>(b->value)));
+			return ptr(new AD((a->value).Num() - (b->value).Num()));
 		if (*a == 0)
 			return getNum(-1) * b;
 		if (*b == 0)
@@ -407,7 +476,7 @@ private:
 	friend ptr operator /(ptr a, ptr b)
 	{
 		if (a->isConst() and b->isConst())
-			return ptr(new AD(std::get<double>(a->value) / std::get<double>(b->value)));
+			return ptr(new AD((a->value).Num() / (b->value).Num()));
 		if (*a == 0 and !(*b == 0))
 		{
 			return  getNum(0);
@@ -418,7 +487,7 @@ private:
 	friend ptr operator ^(ptr a, ptr b)
 	{
 		if (a->isConst() and b->isConst())
-			return ptr(new AD(pow(std::get<double>(a->value), std::get<double>(b->value))));
+			return ptr(new AD(pow((a->value).Num(), (b->value).Num())));
 		if (*a == 0 and !(*b == 0))
 			return getNum(0);
 		if (*b == 0 and !(*a == 0))
@@ -584,7 +653,7 @@ private:
 	{
 		if (g->isConst() and not(g == 0))
 		{
-			return (f ^ getNum(std::get<double>(g->value) - 1)) * getNum(std::get<double>(g->value)) * f->derivative(x);
+			return (f ^ getNum((g->value).Num() - 1)) * getNum((g->value).Num()) * f->derivative(x);
 		}
 		return (f ^ g) * (g->derivative(x) * ptr(new AD("ln", f)) + g * f->derivative(x) / f);
 	}
@@ -596,11 +665,11 @@ public:
 		return std::make_shared<AD>(AD(a));
 	}
 
-	bool operator ==(double b)
+	bool operator ==(double b) const
 	{
 		if (typ == type::known)
 		{
-			if (std::get<double>(value) == b)
+			if ((value).Num() == b)
 			{
 				return true;
 			}
@@ -615,7 +684,7 @@ public:
 	static void replaceUnknown(string p, string n, AD& exp) {
 		if (exp.typ == type::unknown)
 		{
-			if (std::get<string>(exp.value) == p) {
+			if (exp.value.Str() == p) {
 				exp.value = n;
 			}
 		}
@@ -630,39 +699,39 @@ public:
 
 	AD::ptr copy() {
 		if (typ == type::known) {
-			return std::make_shared<AD>(AD(std::get<double>(value)));
+			return std::make_shared<AD>(AD(value.Num()));
 		}
 		else if (typ == type::unknown) {
-			return std::make_shared<AD>(AD(std::get<string>(value)));
+			return std::make_shared<AD>(AD(value.Str()));
 		}
 		else if (typ == type::function) {
-			return std::make_shared<AD>(AD(std::get<string>(value), right->copy()));
+			return std::make_shared<AD>(AD(value.Str(), right->copy()));
 		}
 		else { //if(typ == type::operation) {
-			return std::make_shared<AD>(AD(std::get<string>(value), left->copy(), right->copy()));
+			return std::make_shared<AD>(AD(value.Str(), left->copy(), right->copy()));
 		}
 	}
 
-	static void putVal(const map<string, double>& vals, AD& exp) {
+	static void putVal(const map<string, double>& vec, AD& exp) {
 		if (exp.typ == type::unknown)
 		{
-			std::map<string, double>::const_iterator it = vals.find(std::get<string>(exp.value));
-			if (it != vals.end()) {
+			std::map<string, double>::const_iterator it = vec.find((exp.value).Str());
+			if (it != vec.end()) {
 				exp.value = it->second;
 				exp.typ = type::known;
 			}
 		}
 		else if (exp.typ == type::function)
-			putVal(vals, *exp.right);
+			putVal(vec, *exp.right);
 		else if (exp.typ == type::operation)
 		{
-			putVal(vals, *exp.right);
-			putVal(vals, *exp.left);
+			putVal(vec, *exp.right);
+			putVal(vec, *exp.left);
 		}
 	}
 
-	void putVal(const map<string, double>& vals) {
-		AD::putVal(vals, *this);
+	void putVal(const map<string, double>& vec) {
+		AD::putVal(vec, *this);
 	}
 
 };

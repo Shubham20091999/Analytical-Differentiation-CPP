@@ -40,3 +40,19 @@ public:
 		std::cout << "Derivative not found for Operator: " << s << '\n';
 	}
 };
+
+class IndexOutOfRange {
+public:
+	IndexOutOfRange(unsigned int i, unsigned int m)
+	{
+		std::cout << "ERROR: Index error( " << i << " should be less than " << m << ")\n";
+	}
+};
+
+class GenException {
+public:
+	GenException(const std::string& s)
+	{
+		std::cout << s << "\n";
+	}
+};
