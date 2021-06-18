@@ -281,7 +281,7 @@ public:
 		for (auto e = lst.begin(); e != lst.end(); e++)
 		{
 			int pre = extrafncs::precedence(*e);
-			if (pre > 1 and pre < 6)
+			if (pre > 1 and pre < 1000)
 			{
 				ptr b = stack.top();
 				stack.pop();
@@ -402,6 +402,8 @@ public:
 				{
 					//we multiply by -1
 					ans.push_back("-1");
+					//Empty String represents multiplication but with higher presedence than any other operator
+					//Do note that User cannot pass this operator
 					ans.push_back("");
 				}
 				//if above condition and if its a '+' then just ignore

@@ -13,11 +13,12 @@
 
 int main() {
 
-	std::string function="1/-sec(x)";
-	AD::ptr parsed=AD::parse(function);
-	std::cout<<*parsed;
-	AD::ptr der=parsed->derivative("x");
-	std::cout<<der->evaluate({{"x",20}});
+	std::string function = "1/-sec(x)";
+	AD::ptr parsed = AD::parse(function);
+	std::cout << *parsed << "\n";
+	AD::ptr der = parsed->derivative("x");
+	std::cout << *der << "\n";
+	std::cout << der->evaluate({ {"x",20} });
 
 	//std::cout<<der->evaluate({{"x",2}});
 
