@@ -281,15 +281,15 @@ public:
 		for (auto e = lst.begin(); e != lst.end(); e++)
 		{
 			int pre = extrafncs::precedence(*e);
-			if (pre > 1 and pre < 5)
+			if (pre > 1 and pre < 6)
 			{
 				ptr b = stack.top();
 				stack.pop();
 				ptr a = stack.top();
 				stack.pop();
-				stack.push(ptr(new AD(*e, a, b)));
+				stack.push(ptr(new AD(*e == "" ? "*" : *e, a, b)));
 			}
-			else if (pre == 5)
+			else if (pre >= 1000)
 			{
 				ptr x = stack.top();
 				stack.pop();
@@ -382,7 +382,7 @@ public:
 		return make_shared<AD>(a);
 	}
 
-private:
+	//private:
 	static  std::list<string> parse_toList(const string& exp)
 	{
 		//temporary container for various variables, numbers or functions
@@ -402,7 +402,7 @@ private:
 				{
 					//we multiply by -1
 					ans.push_back("-1");
-					ans.push_back("*");
+					ans.push_back("");
 				}
 				//if above condition and if its a '+' then just ignore
 				else if (container.size() == 0 && *e == '+' && (e == exp.begin() || *(e - 1) != ')'))
@@ -574,7 +574,7 @@ private:
 
 	static ptr dsec(ptr a)
 	{
-		return cos(a) * tan(a);
+		return sec(a) * tan(a);
 	}
 
 	static ptr dcosec(ptr a)
@@ -786,6 +786,8 @@ map<string, std::function< std::shared_ptr<AD>(shared_ptr<AD>)>> AD::dfunctions 
 static int extrafncs::precedence(const string& c)
 {
 	if (AD::functions.find(c) != AD::functions.end())
+		return 1000;
+	if (c == "")
 		return 5;
 	if (c == "^")
 		return 4;
